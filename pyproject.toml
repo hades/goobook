@@ -23,7 +23,7 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = ">=3.7"
 google-api-python-client = "^1.7.12"
 simplejson = "^3.16.0"
 oauth2client = ">=1.5.0,<5.0.0dev"
@@ -31,7 +31,7 @@ setuptools = "^62.6.0"
 pyxdg = "^0.28"
 
 [tool.poetry.dev-dependencies]
-prospector = "^1.7.7"
+prospector = {version = "^1.7.7", python = ">=3.7.2,<4.0"}
 pytest = "^7.1.2"
 docutils = "^0.18.1"
 pyroma = "^4.0"
@@ -39,6 +39,12 @@ vulture = "^2.4"
 
 [tool.poetry.scripts]
 goobook = "goobook.application:main"
+
+[tool.poetry.group.dev.dependencies]
+pytype = {version = "^2023.6.16", python = "<3.11"}
+
+[tool.pytype]
+inputs = ['goobook']
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
