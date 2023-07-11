@@ -19,9 +19,10 @@ import pkg_resources
 
 import goobook.config
 from goobook.goobook import GooBook, Cache, GoogleContacts, parse_groups, parse_contacts
-from goobook.storage import unstorageify
+from goobook.storage import Storage, unstorageify
+from typing import Any, Generator, Type, TypeVar, Union
 
-log = logging.getLogger(__name__)  # pylint: disable=invalid-name
+log: logging.Logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 SCOPES = 'https://www.google.com/m8/feeds'  # read/write access to Contacts and Contact Groups
 
@@ -47,7 +48,7 @@ If you get the page "This app isn't verified" select Advanced and the "Go to Goo
 '''
 
 
-def main():
+def main() -> None:
     locale.setlocale(locale.LC_TIME, '')  # Use system configured locale
 
     parser = argparse.ArgumentParser(description='Search you Google contacts from mutt or the command-line.')
@@ -140,7 +141,7 @@ def main():
 # sub commands
 
 
-def do_add(config, args):
+def do_add(config, args) -> None:
     goobk = GooBook(config)
     if args.name and args.email:
         goobk.add_mail_contact(args.name, args.email, args.phone)
@@ -149,11 +150,11 @@ def do_add(config, args):
     goobk.cache.load(force_update=True)
 
 
-def do_config_template(_config, _args):
+def do_config_template(_config, _args) -> None:
     print(goobook.config.TEMPLATE)
 
 
-def do_dump_contacts(config, args):
+def do_dump_contacts(config, args) -> None:
     goco = GoogleContacts(config)
     contacts = goco.fetch_contacts()
     if args.parse:
@@ -169,7 +170,7 @@ def do_dump_contacts(config, args):
     print(json.dumps(contacts, sort_keys=True, indent=4, ensure_ascii=False, cls=DateEncoder))
 
 
-def do_dump_groups(config, args):
+def do_dump_groups(config, args) -> None:
     goco = GoogleContacts(config)
     groups = goco.fetch_contact_groups()
     if args.parse:
@@ -179,22 +180,22 @@ def do_dump_groups(config, args):
     print(json.dumps(groups, sort_keys=True, indent=4, ensure_ascii=False))
 
 
-def do_query(config, args):
+def do_query(config, args) -> None:
     goobk = GooBook(config)
     goobk.query(args.query, simple=args.simple)
 
 
-def do_query_details(config, args):
+def do_query_details(config, args) -> None:
     goobk = GooBook(config)
     goobk.query_details(args.query)
 
 
-def do_reload(config, _args):
+def do_reload(config, _args) -> None:
     cache = Cache(config)
     cache.load(force_update=True)
 
 
-def do_authenticate(config, args):
+def do_authenticate(config, args) -> None:
     store = config.store
     creds = config.creds
 
@@ -205,7 +206,7 @@ def do_authenticate(config, args):
         print('You are already authenticated.')
 
 
-def do_unauthenticate(config, _args):
+def do_unauthenticate(config, _args) -> None:
     oauth_db = pathlib.Path(config.oauth_db_filename)
     if oauth_db.exists():
         oauth_db.unlink()

@@ -10,15 +10,17 @@ import configparser
 import logging
 
 import oauth2client.client
+import oauth2client.file
 from xdg.BaseDirectory import (xdg_cache_home, xdg_config_home,
                                xdg_config_dirs, xdg_data_dirs, xdg_data_home)
 
 from goobook.storage import Storage
+from typing import Any, List, Optional, Type, TypeVar, Union
 
-log = logging.getLogger(__name__)  # pylint: disable=invalid-name
-LEGACY_CONFIG_FILE = pathlib.Path('~/.goobookrc').expanduser()
-LEGACY_AUTH_FILE = pathlib.Path('~/.goobook_auth.json').expanduser()
-LEGACY_CACHE_FILE = pathlib.Path('~/.goobook_cache').expanduser()
+log: logging.Logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
+LEGACY_CONFIG_FILE: pathlib.Path = pathlib.Path('~/.goobookrc').expanduser()
+LEGACY_AUTH_FILE: pathlib.Path = pathlib.Path('~/.goobook_auth.json').expanduser()
+LEGACY_CACHE_FILE: pathlib.Path = pathlib.Path('~/.goobook_cache').expanduser()
 
 TEMPLATE = '''\
 # Use this template to create your ~/.goobookrc
@@ -44,14 +46,14 @@ TEMPLATE = '''\
 ;default_group:
 '''
 
-def topath(x):
+def topath(x) -> Union[pathlib.Path, List[pathlib.Path]]:
     if isinstance(x, list):
         return [pathlib.Path(_x) for _x in x]
     else:
         return pathlib.Path(x)
 
 
-def read_config(config_file=None):
+def read_config(config_file=None) -> Storage:
     """Reads the ~/.goobookrc and any authentication data.
 
     returns the configuration as a dictionary.
@@ -138,7 +140,7 @@ def read_config(config_file=None):
     return config
 
 
-def _get_config(config_file):
+def _get_config(config_file) -> Optional[configparser.SafeConfigParser]:
     """find, read and parse configuraton."""
     parser = configparser.SafeConfigParser()
     if os.path.lexists(config_file):

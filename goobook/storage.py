@@ -4,6 +4,9 @@
 
 import collections
 import json
+from typing import Any, Generator, Tuple, TypeVar, Union
+
+_T0 = TypeVar('_T0')
 
 
 class Storage(object):
@@ -36,7 +39,7 @@ class Storage(object):
     __internal_vars = ('_dict', '_normalize', '_denormalize')
 
     def __init__(self, dict_=None, default_factory=None, normalize=None,
-                 denormalize=None, case_insensitive=False, **kwargs):
+                 denormalize=None, case_insensitive=False, **kwargs) -> None:
         '''
         dict_: Dict to use as backend for Storage object, normalize will not
                be called for existing items.
@@ -73,20 +76,20 @@ class Storage(object):
         for key, value in list(kwargs.items()):
             self[key] = value
 
-    def get_dict(self):
+    def get_dict(self) -> Any:
         ''' Get the contained dict.
             all keys will be in their normalized form.
         '''
         return self._dict
 
-    def iteritems(self):
+    def iteritems(self) -> Generator[Tuple[Any, Any], None, None]:
         ''' Iterate over all (key, value) pairs.
         All keys will be denormalized.
         '''
         for key, value in list(self._dict.items()):
             yield self._denormalize(key), value
 
-    def __getattr__(self, key):
+    def __getattr__(self, key) -> Any:
         try:
             # prevent recursion (triggered by pickle.load()
             if key in Storage.__internal_vars:
@@ -96,7 +99,7 @@ class Storage(object):
         except KeyError as err:
             raise AttributeError(err)
 
-    def __setattr__(self, key, value):
+    def __setattr__(self, key, value) -> None:
         # prevent recursion (triggered by pickle.load()
         if key in Storage.__internal_vars:
             object.__setattr__(self, key, value)
@@ -104,7 +107,7 @@ class Storage(object):
             key = self._normalize(key)
             self[key] = value
 
-    def __delattr__(self, key):
+    def __delattr__(self, key) -> None:
         try:
             key = self._normalize(key)
             del self[key]
@@ -112,35 +115,35 @@ class Storage(object):
             raise AttributeError(err)
 
     # For container methods pass-through to the underlying dict.
-    def __getitem__(self, key):
+    def __getitem__(self, key) -> Any:
         key = self._normalize(key)
         return self._dict[key]
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key, value) -> None:
         key = self._normalize(key)
         self._dict[key] = value
 
-    def __delitem__(self, key):
+    def __delitem__(self, key) -> None:
         key = self._normalize(key)
         del self._dict[key]
 
-    def __contains__(self, key):
+    def __contains__(self, key) -> bool:
         key = self._normalize(key)
         return key in self._dict
 
-    def __iter__(self):
+    def __iter__(self) -> Generator[Any, Any, None]:
         for key in self._dict:
             yield self._denormalize(key)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self._dict.__len__()
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         return isinstance(other, Storage) and self._dict == other._dict
 
-    __hash__ = None
+    __hash__: None = None
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         items = []
         if isinstance(self._dict, collections.defaultdict):
             items.append('default_factory={0}'.format(self._dict.default_factory))
@@ -149,7 +152,7 @@ class Storage(object):
         return '{0}({1})'.format(self.__class__.__name__, ', '.join(items))
 
 
-def json_loads_storage(str_):
+def json_loads_storage(str_) -> Storage:
     '''
         >>> json_loads_storage('[{"a":1}]')
         [Storage(a=1)]
@@ -157,11 +160,11 @@ def json_loads_storage(str_):
     return json.loads(str_, object_hook=Storage)
 
 
-def json_load_storage(fp_):
+def json_load_storage(fp_) -> Storage:
     return json.load(fp_, object_hook=Storage)
 
 
-def json_dumps_storage(job):
+def json_dumps_storage(job) -> str:
     '''
         >>> json_dumps_storage(Storage(a=2))
         '{\\n  "a": 2\\n}'
@@ -173,11 +176,11 @@ def json_dumps_storage(job):
     return json.dumps(job, default=_storage_to_dict, indent=2)
 
 
-def json_dump_storage(obj, fp_):
+def json_dump_storage(obj, fp_) -> None:
     return json.dump(obj, fp_, default=_storage_to_dict, indent=2)
 
 
-def _storage_to_dict(obj):
+def _storage_to_dict(obj) -> dict:
     '''
         >>> _storage_to_dict(Storage(a=1))
         {'a': 1}
@@ -193,7 +196,7 @@ def _storage_to_dict(obj):
         raise TypeError('not a Storage object')
 
 
-def storageify(obj, storageFactory=Storage):
+def storageify(obj, storageFactory: _T0 = Storage) -> _T0:
     '''
     takes a json style datastructure and converts all dicts to Storage.
     '''
@@ -210,7 +213,7 @@ def storageify(obj, storageFactory=Storage):
     return res
 
 
-def unstorageify(obj):
+def unstorageify(obj: _T0) -> Union[dict, list, _T0]:
     '''
     make a deep copy of Storage, dict, and lists
     and convert all Storage to dict

@@ -34,8 +34,9 @@ import httplib2
 from googleapiclient.discovery import build
 
 from goobook.storage import Storage, storageify, unstorageify
+from typing import Any, Generator, NamedTuple, Optional, Tuple, Type, TypeVar, Union
 
-log = logging.getLogger(__name__)  # pylint: disable=invalid-name
+log: logging.Logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 CACHE_FORMAT_VERSION = '5.1'
 
@@ -49,12 +50,12 @@ class GooBook():
     print and sys.exit().
     """
 
-    def __init__(self, config):
+    def __init__(self, config) -> None:
         self.__config = config
         self.cache = Cache(config)
         self.cache.load()
 
-    def query(self, query, simple=False):
+    def query(self, query, simple=False) -> None:
         """Do the query, and print it out in specified format.
 
         simple=False is the mutt format
@@ -96,7 +97,7 @@ class GooBook():
             else:
                 print('%s\t%s (group)' % (emails, title))
 
-    def query_details(self, query):
+    def query_details(self, query) -> None:
         """Method for querying the contacts and printing a detailed view."""
         out = sys.stdout
 
@@ -180,7 +181,7 @@ class GooBook():
             if group in contact.groups:
                 yield contact
 
-    def add_mail_contact(self, name, mailaddr, phone=None):
+    def add_mail_contact(self, name, mailaddr, phone=None) -> None:
         contact = {
             'names': [{'givenName': name}],
             'emailAddresses': [{'value': mailaddr}],
@@ -192,7 +193,7 @@ class GooBook():
         gcont.create_contact(contact)
         log.info('Created contact name: %s email: %s %s', name, mailaddr, phone)
 
-    def add_email_from(self, lines):
+    def add_email_from(self, lines) -> None:
         """Add an address from From: field of a mail.
 
         This assumes a single mail file is supplied through.
@@ -228,12 +229,12 @@ class GooBook():
 
 
 class Cache():
-    def __init__(self, config):
+    def __init__(self, config) -> None:
         self.__config = config
         self.contacts = None  # list of Storage
         self.groups = None  # list of Storage
 
-    def load(self, force_update=False):
+    def load(self, force_update=False) -> None:
         """Load the cached addressbook feed, or fetch it (again) if it is old or missing or invalid or anything.
 
         Args:
@@ -264,7 +265,7 @@ class Cache():
         if not self.contacts:
             raise Exception('Failed to find any contacts')  # TODO
 
-    def update(self):
+    def update(self) -> None:
         log.info('Retrieving contact data from Google.')
         gcs = GoogleContacts(self.__config)
         groupname_by_id = parse_groups(gcs.fetch_contact_groups())
@@ -272,7 +273,7 @@ class Cache():
         self.groups = list(groupname_by_id.values())
         self.save()
 
-    def save(self):
+    def save(self) -> None:
         """Pickle the addressbook and a timestamp."""
         if self.contacts:  # never write a empty addressbook
             cache = {'contacts': unstorageify(self.contacts),
@@ -281,7 +282,7 @@ class Cache():
             pickle.dump(cache, open(self.__config.cache_filename, 'wb'))
 
 
-def parse_contact(person, groupname_by_id):
+def parse_contact(person, groupname_by_id) -> Optional[Storage]:
     """Extracts interesting contact info from cache.
 
     https://developers.google.com/people/api/rest/v1/people
@@ -350,14 +351,14 @@ def parse_contact(person, groupname_by_id):
     return contact
 
 
-def parse_contacts(raw_contacts, groupname_by_id):
+def parse_contacts(raw_contacts, groupname_by_id) -> Generator[Storage, Any, None]:
     for contact in raw_contacts:
         parsed = parse_contact(contact, groupname_by_id)
         if parsed:
             yield parsed
 
 
-def parse_groups(raw_groups):
+def parse_groups(raw_groups) -> dict:
     groupname_by_id = {}
     for entry in raw_groups:
         groupname_by_id[entry['resourceName']] = entry['formattedName']
@@ -366,7 +367,7 @@ def parse_groups(raw_groups):
 
 class GoogleContacts():
 
-    def __init__(self, config):
+    def __init__(self, config) -> None:
         http_client = self.__get_client(config.creds)
         self.service = build('people', 'v1', http=http_client)
         # self.__additional_headers = {
@@ -382,7 +383,7 @@ class GoogleContacts():
         http_auth = credentials.authorize(httplib2.Http())
         return http_auth
 
-    def fetch_contacts(self):
+    def fetch_contacts(self) -> list:
         connections = []
         request = self.service.people().connections().list(
             resourceName='people/me',
@@ -408,7 +409,7 @@ class GoogleContacts():
             request = self.service.people().connections().list_next(request, response)
         return connections
 
-    def fetch_contact_groups(self):
+    def fetch_contact_groups(self) -> list:
         groups = []
         request = self.service.contactGroups().list(pageSize=500)
 
@@ -424,5 +425,5 @@ class GoogleContacts():
             request = self.service.contactGroups().list_next(request, response)
         return groups
 
-    def create_contact(self, contact):
+    def create_contact(self, contact) -> None:
         self.service.people().createContact(body=contact).execute()
