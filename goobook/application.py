@@ -12,9 +12,8 @@ import pathlib
 import json
 import sys
 
-import oauth2client.client
-import oauth2client.file
-import oauth2client.tools
+from google_auth_oauthlib import flow
+
 import pkg_resources
 
 import goobook.config
@@ -24,25 +23,21 @@ from typing import Any, Generator, Type, TypeVar, Union
 
 log: logging.Logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
-SCOPES = 'https://www.google.com/m8/feeds'  # read/write access to Contacts and Contact Groups
+SCOPES = 'https://www.googleapis.com/auth/contacts'  # read/write access to Contacts and Contact Groups
 
 AUTHENTICATE_HELP_STRING = '''Google OAuth authentication.
 
-Before running goobook authenticate you need a client_id and a client_secret, get it like this:
+Before running goobook authenticate you need a client secrets JSON file, get it like this:
 
 Go to https://developers.google.com/people/quickstart/python
 and click "Enable the People API"
 select a name (ex. GooBook)
 select desktop application
-save the client_id and client_secret to be used below::
+click "download JSON" to be used below
 
-    $ goobook authenticate -- CLIENT_ID CLIENT_SECRET
+    $ goobook authenticate -- client_secrets.json
 
 and follow the instructions.
-
-if it doesn't open a webbrowser use
-
-goobook authenticate --noauth_local_webserver -- CLIENT_ID CLIENT_SECRET
 
 If you get the page "This app isn't verified" select Advanced and the "Go to GooBook (unsafe)" at the bottom.
 '''
@@ -109,12 +104,9 @@ def main() -> None:
 
     parser_auth = subparsers.add_parser('authenticate',
                                         description=AUTHENTICATE_HELP_STRING,
-                                        formatter_class=argparse.RawDescriptionHelpFormatter,
-                                        parents=[oauth2client.tools.argparser])
-    parser_auth.add_argument('client_id', metavar='CLIENT_ID',
-                             help='Client ID')
-    parser_auth.add_argument('client_secret', metavar='CLIENT_SECRET',
-                             help='Client secret')
+                                        formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser_auth.add_argument('client_secrets_json', metavar='CLIENT_SECRETS_JSON',
+                             help='Client secrets JSON file')
     parser_auth.set_defaults(func=do_authenticate)
 
     parser_unauth = subparsers.add_parser('unauthenticate',
@@ -136,6 +128,8 @@ def main() -> None:
         args.func(config, args)
     except goobook.config.ConfigError as err:
         sys.exit('Configuration error: ' + str(err))
+
+    goobook.config.maybe_save_creds(config)
 
 ##############################################################################
 # sub commands
@@ -196,12 +190,11 @@ def do_reload(config, _args) -> None:
 
 
 def do_authenticate(config, args) -> None:
-    store = config.store
     creds = config.creds
 
-    if not creds or creds.invalid:
-        flow = oauth2client.client.OAuth2WebServerFlow(args.client_id, args.client_secret, SCOPES)
-        creds = oauth2client.tools.run_flow(flow, store, args)
+    if not creds:
+        f = flow.InstalledAppFlow.from_client_secrets_file(args.client_secrets_json, SCOPES)
+        config.creds = f.run_local_server()
     else:
         print('You are already authenticated.')
 
@@ -211,6 +204,7 @@ def do_unauthenticate(config, _args) -> None:
     if oauth_db.exists():
         oauth_db.unlink()
         print("deleted", oauth_db)
+    config.creds = None
 
 
 if __name__ == '__main__':
