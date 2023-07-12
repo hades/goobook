@@ -129,7 +129,8 @@ def main() -> None:
     except goobook.config.ConfigError as err:
         sys.exit('Configuration error: ' + str(err))
 
-    goobook.config.maybe_save_creds(config)
+    if config:
+        goobook.config.maybe_save_creds(config)
 
 ##############################################################################
 # sub commands

@@ -4,6 +4,7 @@
 
 import os
 import pathlib
+import subprocess
 import sys
 from os.path import realpath, expanduser
 import configparser
@@ -61,6 +62,7 @@ def read_config(config_file=None) -> Storage:
     config = Storage({  # Default values
         'cache_filename': None,
         'oauth_db_filename': None,
+        'oauth_provider_cmdline': None,
         'cache_expiry_hours': '24',
         'filter_groupless_contacts': True,
         'default_group': ''})
@@ -131,13 +133,23 @@ def read_config(config_file=None) -> Storage:
             log.debug("no auth file found, will use %s", auth_file)
         config.oauth_db_filename = str(auth_file)
 
-    config.creds = credentials.Credentials.from_authorized_user_file(auth_file) if auth_file.exists() else None
+    if auth_file.exists():
+        config.creds = credentials.Credentials.from_authorized_user_file(auth_file)
+    elif config.oauth_provider_cmdline:
+        log.debug("executing OAuth credential provider: %s", config.oauth_provider_cmdline)
+        provider_process = subprocess.run(config.oauth_provider_cmdline,
+                                          capture_output=True, check=True, shell=True)
+        config.creds = credentials.Credentials(provider_process.stdout)
+    else:
+        config.creds = None
 
     log.debug(config)
     return config
 
 
 def maybe_save_creds(config: Storage):
+    if config.oauth_provider_cmdline:
+        return
     new_creds = config.creds
     if not new_creds or not new_creds.token:
         return
